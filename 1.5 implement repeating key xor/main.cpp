@@ -9,7 +9,7 @@ void optionParsing(int argc, char** argv);
 // -y "The message/plaintext goes here."
 bool keyRaw    = true,
      msgRaw    = true,
-     outputHex = true;
+     outputRaw = false;
 byte *key, *plaintext;
 size_t keyn, plaintextn;
 
@@ -21,13 +21,13 @@ int main (int argc, char** argv) {
     plaintext[i] ^= key[i%keyn];
   
   //Output
-  if (outputHex) {
+  if (outputRaw) {
     for (size_t i = 0; i < plaintextn; i++)
-      printf("%02x", plaintext[i]);
+      printf("%c", plaintext[i]);
     printf("\n");
   } else {
     for (size_t i = 0; i < plaintextn; i++)
-      printf("%c", plaintext[i]);
+      printf("%02x", plaintext[i]);
     printf("\n");
   }
   
@@ -57,7 +57,7 @@ void optionParsing(int argc, char** argv) {
       msgRaw = strcmp(optarg,"hex");
       break;
     case 'o':
-      outputHex = !strcmp(optarg,"hex");
+      outputRaw = strcmp(optarg,"hex");
       break;
     case 'x':
       key_ = optarg;
