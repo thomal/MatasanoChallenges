@@ -1,36 +1,44 @@
 #include "parse_options.h"
-#define CASE_X_SET_Y_IF_OPTARG_ISNT_Z(X,Y,Z) \
+#define SET_X_TO_Y_IF_OPTARG_IS_S(X,Y,S) \
+    if (strcmp(optarg, (S)) == 0) \
+      (X) = (Y);
+
+#define ASSIGN_ENUM_FROM_FORMAT_STRING_IN_OPTARG(X) \
+  SET_X_TO_Y_IF_OPTARG_IS_S((X), RAW,            "raw") \
+  SET_X_TO_Y_IF_OPTARG_IS_S((X), HEXFILE_TOKENS, "hexfile_tokens") \
+  SET_X_TO_Y_IF_OPTARG_IS_S((X), HEX,            "hex") \
+  SET_X_TO_Y_IF_OPTARG_IS_S((X), B64FILE,        "b64file")
+
+#define FORMAT_ARGUMENT(X,Y) \
   case (X): \
-    (Y) = strcmp(optarg, (Z)); \
-    break;
+      ASSIGN_ENUM_FROM_FORMAT_STRING_IN_OPTARG((Y)) \
+      break;
 
 #define CASE_X_SET_Y_TO_OPTARG(X,Y) \
   case (X): \
     (Y) = optarg; \
     break;
                 
-
-bool keyRaw    = true,
-     inputRaw  = true,
-     outputRaw = false;
-byte *key, *input;
-size_t keyn, inputn;
+IOFormat inputF  = UNDEFINED,
+         outputF = UNDEFINED;
+byte *input;
+size_t inputn;
+IOFormat inputF_original = UNDEFINED;
 
 void optionParsing(int argc, char** argv) {
   int oc; //Option character
-  char *key_, *input_;
+  char *input_ = nullptr;
   
   if (argc == 1) {
-    printf("Read main.cpp\n");
+    printf("Read parse_options.h/.cpp\n");
     exit(0);
   }
   
-  while ((oc = getopt(argc, argv, "k:i:o:x:y:")) != -1) {
+  //Parse args
+  while ((oc = getopt(argc, argv, "i:o:y:")) != -1) {
     switch (oc) {
-    CASE_X_SET_Y_IF_OPTARG_ISNT_Z('k', keyRaw,    "hex")
-    CASE_X_SET_Y_IF_OPTARG_ISNT_Z('i', inputRaw,  "hex")
-    CASE_X_SET_Y_IF_OPTARG_ISNT_Z('o', outputRaw, "hex")
-    CASE_X_SET_Y_TO_OPTARG('x', key_)
+    FORMAT_ARGUMENT('i', inputF)
+    FORMAT_ARGUMENT('o', outputF)
     CASE_X_SET_Y_TO_OPTARG('y', input_)
     default:
       printf("Unknown argument: %c\n", oc);
@@ -40,26 +48,36 @@ void optionParsing(int argc, char** argv) {
     }
   }
   
-  if (keyRaw) {
-    assert(sizeof(byte)==sizeof(char));
-    key = (byte*)key_;
-    keyn = strlen(key_);
-  } else {
-    key = hexStrToByteStr(key_, &keyn);
+  //Deal with unprovided options and invalid combinations
+  if (inputF != HEX && inputF != RAW && inputF != HEXFILE_TOKENS && inputF != B64FILE) {
+    printf("ERROR - must specify input format with -i [raw|hex|hexfile_tokens|b64file]\n");
+    exit(0);
+  }
+  if (outputF != HEX && outputF != RAW) {
+    printf("ERROR - must specify output format with -o [raw|hex]\n");
+    exit(0);
+  }
+  if (input_ == nullptr) {
+    printf("ERROR - must specify input data with -y [<hex string>|<raw bytes>|<filename>]\n");
+    exit(0);
   }
   
-  if (inputRaw) {
-    assert(sizeof(byte)==sizeof(char));
+  //Set input and inputn
+  if (inputF == RAW) {
     input = (byte*)input_;
     inputn = strlen(input_);
-  } else {
+  } else if (inputF == HEX) {
     input = hexStrToByteStr(input_, &inputn);
+    inputF = RAW;
+    inputF_original = HEX;
+  } else if (inputF == B64FILE) {
+    input = getBase64DataFromFileByIgnoringAllElse(input_, &inputn);
+    inputF = RAW;
+    inputF_original = B64FILE;
   }
 }
 
 void cleanupArgs() {
-  if (!inputRaw)
+  if (inputF_original == HEX || inputF_original == B64FILE)
     free(input);
-  if (!keyRaw)
-    free(key);
 }
