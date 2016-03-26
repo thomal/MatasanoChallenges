@@ -5,6 +5,7 @@
 // -i [hex|raw|hexfile_tokens|b64file]  determines how input is read
 // -o [hex|raw]  determines how output is printed
 // -y "The input data goes here."
+// -l Enable detailed logging of process
 // Hex: lowercase (automatically converted to RAW by optionParsing(), null bytes are fine)
 // Raw: raw bytes (cannot contain null bytes or inputn is invalid)
 // Hexfile Tokens: A file of whitespace seperated hexstrings, each to be
@@ -20,6 +21,7 @@ typedef enum {UNDEFINED, RAW, HEX, HEXFILE_TOKENS, B64FILE} IOFormat;
 extern IOFormat inputF, outputF;
 extern byte *input;
 extern size_t inputn;
+extern bool f_log;
 
 //Functions
 void optionParsing(int argc, char** argv);

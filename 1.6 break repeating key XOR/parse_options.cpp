@@ -18,11 +18,17 @@
   case (X): \
     (Y) = optarg; \
     break;
+
+#define FLAG(X,Y) \
+  case (X): \
+    (Y) = true;\
+    break;
                 
 IOFormat inputF  = UNDEFINED,
          outputF = UNDEFINED;
 byte *input;
 size_t inputn;
+bool f_log = false;
 IOFormat inputF_original = UNDEFINED;
 
 void optionParsing(int argc, char** argv) {
@@ -35,11 +41,12 @@ void optionParsing(int argc, char** argv) {
   }
   
   //Parse args
-  while ((oc = getopt(argc, argv, "i:o:y:")) != -1) {
+  while ((oc = getopt(argc, argv, "i:o:y:l")) != -1) {
     switch (oc) {
     FORMAT_ARGUMENT('i', inputF)
     FORMAT_ARGUMENT('o', outputF)
     CASE_X_SET_Y_TO_OPTARG('y', input_)
+    FLAG('l', f_log)
     default:
       printf("Unknown argument: %c\n", oc);
       printf("Read parse_options.h\n");

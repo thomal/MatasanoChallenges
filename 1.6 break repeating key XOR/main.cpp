@@ -20,14 +20,13 @@ void decrypt (const byte* input, size_t inputn, bool log = false) {
   }
   if(log){printf("\n");}
   
-done:
   free(output);
 }
 
 void tokensFromHexFile (const char* hexData) {
   size_t inputn;
   byte* input = hexStrToByteStr(hexData, &inputn);
-  decrypt(input, inputn);
+  decrypt(input, inputn, f_log);
   free(input);
 }
 
@@ -39,7 +38,7 @@ int main (int argc, char** argv) {
     withTokens((const char*)input, &tokensFromHexFile);
   } else {
     assert(inputF == RAW); //HEX and B64FILE are silently converted to RAW
-    decrypt(input, inputn, true);
+    decrypt(input, inputn, f_log);
   }
   
   cleanupArgs();
