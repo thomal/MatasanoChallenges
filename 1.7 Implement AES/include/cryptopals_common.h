@@ -53,6 +53,11 @@ byte* singleByteXor (const byte* input, byte key, size_t n);
 // length of key in bytes. The size of the output is equal to n, and the same
 // function is used for encryption and decryption.
 byte* repeatingKeyXor (const byte* input, size_t n, const byte* key, size_t keyn);
+//Allocates a new buffer to hold byte*, in is length of input in bytes, kn is
+//  length of key in bytes, outn is a place to store the length of the returned
+//  byte*.
+byte* aes_ecb_encrypt(const byte* input, size_t in, const byte* key, size_t kn, bool log, size_t* outn);
+byte* aes_ecb_decrypt(const byte* input, size_t in, const byte* key, size_t kn, bool log, size_t* outn);
 ////////////////////////////////////////////////////////////////////////////////
 
 // Breaks //////////////////////////////////////////////////////////////////////

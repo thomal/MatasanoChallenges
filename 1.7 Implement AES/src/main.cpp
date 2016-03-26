@@ -17,9 +17,16 @@ byte* withInputData (const byte* input, size_t in, const byte* key, size_t kn, b
   printf("Logging = %s\n", log?"true":"false");
   printf("Mode = %s\n", mode);
   
-  *outn = in;
-  byte* output = (byte*)malloc(sizeof(byte)*in);
-  memcpy(output, input, in);
+  byte* output;
+  if (strcmp(mode, "encrypt") == 0) {
+    output = aes_ecb_encrypt(input, in, key, kn, log, outn);
+  } else if (strcmp(mode, "encrypt") == 0) {
+    output = aes_ecb_decrypt(input, in, key, kn, log, outn);
+  } else {
+    printf("Invalid mode %s.\n", mode);
+    assert(0);
+  }
+  
   return output;
 }
 
