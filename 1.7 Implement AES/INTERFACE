@@ -1,0 +1,25 @@
+Interface
+---------
+Format:
+  -i [hex|raw|hexfile_tokens|b64file] determines how -y is read
+  -I [hex|raw] determines how -x is read
+  -o [hex|raw] determines how output is printed to stdio
+Data:
+  -y "The input data goes here."
+  -x password
+Flags:
+  -l Enable detailed logging of process
+  -m [encrypt|decrypt]
+
+Description of Formats
+----------------------
+Hex:
+  Lowercase hex, each byte represented by two characters.
+Raw:
+  Raw bytes, cannot contain null bytes.
+Hexfile Tokens:
+  A file of whitespace seperated hexstrings, each to be processed independantly.
+Base 64 file:
+  Base64 data, possibly spread over multiple lines with whitespace and
+  non-base64 characters. Disregards all non-base64 characters and parses as one
+  block of data. Cannot contain null bytes.
