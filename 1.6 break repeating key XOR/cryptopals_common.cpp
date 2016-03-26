@@ -37,8 +37,16 @@ byte* hexStrToByteStr (const char* hexstr, size_t* n) {
   return bytestr;
 }
 
-byte* b64StringToByteStr (const char* b64str, size_t* n) {
-  assert(0);
+//TODO this is horribly inefficient.
+int b64CharToInt (char c) {
+  for (size_t i = 0; i < 64; i++)
+    if (base64arr[i] == c)
+      return i;
+  printf("Unknown alleged 'base64' character: '%c' (0x%x)\n", c, c);
+  return -1;
+}
+
+byte* b64StrToByteStr (const char* b64str, size_t* n) {
   //From 1.1:
   /*
     //Collect relevent values locally
@@ -52,6 +60,59 @@ byte* b64StringToByteStr (const char* b64str, size_t* n) {
     base64[i64+2] = A(((byte1 & 0b11110000) >> 4) | ((byte2 & 0b00000011) << 4));
     base64[i64+3] = A(((byte2 & 0b11111100) >> 2));
   */
+  //Byte 0: lower 6 bits are in c0
+  //        upper two bits are lower two bits of c1
+  //Byte 1: lower 4 bits are upper four bits of c1
+  //        upper 4 bits are lower 4 bits of c2
+  //Byte 2: lower 2 bits are upper 2 bits of c2
+  //        upper 6 bits are lower 6 bits of c3
+  
+  //Convert
+  size_t len = strlen(b64str);
+  size_t maxBytes = (size_t) (ceil((double)len/4)*3);
+  size_t truesize = 0;
+  byte* bytes = (byte*) malloc(sizeof(byte)*maxBytes);
+  size_t b64i = 0;
+  for (; b64i < len; b64i += 4) {
+    if (b64i+3 < len) {
+      int c0 = b64CharToInt(b64str[b64i+0]),
+          c1 = b64CharToInt(b64str[b64i+1]),
+          c2 = b64CharToInt(b64str[b64i+2]),
+          c3 = b64CharToInt(b64str[b64i+3]);
+      byte b0 = ((c0 & 0b00111111) << 2) + ((c1 & 0b00110000) >> 4),
+           b1 = ((c1 & 0b00001111) << 4) + ((c2 & 0b00111100) >> 2),
+           b2 = ((c2 & 0b00000011) << 6) + ((c3 & 0b00111111) >> 0);
+      bytes[truesize++] = b0;
+      bytes[truesize++] = b1;
+      bytes[truesize++] = b2;
+    }
+  }
+  
+  //Handle final few characters (calcs copy/pasted from above, keep in sync)
+  b64i -= 4;
+  size_t charactersLeft = len-b64i;
+  if (charactersLeft == 1) {
+    printf("ERROR - Invalid base64 data");
+    assert(0);
+  }
+  if (charactersLeft == 2) {
+    int c0 = b64CharToInt(b64str[b64i+0]),
+        c1 = b64CharToInt(b64str[b64i+1]);
+    byte b0 = ((c0 & 0b00111111) << 2) + ((c1 & 0b00110000) >> 4);
+    bytes[truesize++] = b0;
+  }
+  if (charactersLeft == 3) {
+    int c0 = b64CharToInt(b64str[b64i+0]),
+        c1 = b64CharToInt(b64str[b64i+1]),
+        c2 = b64CharToInt(b64str[b64i+2]);
+    byte b0 = ((c0 & 0b00111111) << 2) + ((c1 & 0b00110000) >> 4),
+         b1 = ((c1 & 0b00001111) << 4) + ((c2 & 0b00111100) >> 2);
+    bytes[truesize++] = b0;
+    bytes[truesize++] = b1;
+  }
+  *n = truesize;
+  
+  return bytes;
 }
 
 byte* singleByteXor (const byte* input, byte key, size_t n) {
@@ -166,17 +227,17 @@ byte* breakSingleByteXor (const byte* ciphertext, size_t len, bool log, size_t i
   
   //Output to stdout
   if (log) {
-    PAD printf("Score: %f\n", minScore);
-    PAD printf("Key: %x\n", bestKey);
+    //PAD printf("Score: %f\n", minScore);
+    //PAD printf("Key: 0x%02x\n", bestKey);
     PAD printf("Key ASCII: %c\n", bestKey);
-    PAD printf("Plaintext: ");
+    /*PAD printf("Plaintext: ");
     for (size_t i = 0; i < len; i++)
       printf("%x", plaintext[i]);
-    printf("\n");
-    PAD printf("ASCII: ");
+    printf("\n");*/
+    /*PAD printf("ASCII: ");
     for (size_t i = 0; i < len; i++)
       printf("%c", replaceUnprintableWithQuestion(plaintext[i]));
-    printf("\n");
+    printf("\n");*/
   }
   return plaintext;
 }
@@ -197,6 +258,8 @@ byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log, size_t
   }
   if (maxKeysize < 2) {
     maxKeysize = 0.2*len;
+    if (maxKeysize > 40)
+      maxKeysize = 40;
   }
   
   //Find keysize
@@ -247,7 +310,7 @@ byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log, size_t
   
   //Deinterlace (let di be short for deinterlace, let a message formed by the
   //  process of deinterlacing be known as a deinterlaced block, or diBlock)
-  if (log) {PAD printf("Deinterlacing:\n");}
+  if (log) {PAD printf("Deinterlacing\n");}
   indentLevel++;
   double blockCount = ceil((double)len/bestKeysize);
   double maxDiMsgSize = 1*blockCount; //1 byte per block
@@ -264,16 +327,6 @@ byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log, size_t
     }
   }
   
-  //Print deinterlaced blocks for debugging
-  if (log) {
-    for (size_t diBlock = 0; diBlock < bestKeysize; diBlock++) {
-      PAD printf("Deinterlaced block %zu: ", diBlock);
-      for (size_t i = 0; i < diBlockSizes[diBlock]; i++) {
-        printf("%02x", diBlocks[diBlock][i]);
-      }
-      printf("\n");
-    }
-  }
   indentLevel--;
   
   //Break deinterlaced blocks
@@ -283,12 +336,22 @@ byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log, size_t
     diPlainBlocks[diBlock] = breakSingleByteXor(diBlocks[diBlock], diBlockSizes[diBlock], log, indentLevel+1, nullptr, threshold);
     if (!diPlainBlocks[diBlock]) {
       if(log){
-        printf("WARNING - Failed to break deinterlaced block %zu, hex block follows:", diBlock);
+        printf("WARNING - Failed to break deinterlaced block %zu, hex block follows:", diBlock+1);
         for (size_t i = 0; i < diBlockSizes[diBlock]; i++)
           printf("%02x", diBlocks[diBlock][i]);
         printf("\n");
       }
-      goto fail; //I feel worried about this line for some reason...
+      //Cleanup
+      for (size_t diBlock2 = 0; diBlock2 < diBlock; diBlock2++) {
+        free(diBlocks[diBlock2]);
+        if (diPlainBlocks[diBlock2] != nullptr) {
+          free(diPlainBlocks[diBlock2]);
+        }
+      }
+      free(diBlocks);
+      free(diPlainBlocks);
+      free(diBlockSizes);
+      return plaintext; //nullptr
     }
   }
   
@@ -307,17 +370,16 @@ byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log, size_t
     }
   }
   
-  //Cleanup and return
-fail:
+  //Cleanup and return (N.B.: Nearly duplicated above)
   for (size_t diBlock = 0; diBlock < bestKeysize; diBlock++) {
     free(diBlocks[diBlock]);
-    if (diPlainBlocks[diBlock] != nullptr)
+    if (diPlainBlocks[diBlock] != nullptr) {
       free(diPlainBlocks[diBlock]);
+    }
   }
   free(diBlocks);
   free(diPlainBlocks);
   free(diBlockSizes);
-  
   return plaintext;
 }
 
@@ -370,7 +432,7 @@ void ignoreNonBase64AndAppend (const char* token) {
 byte* getBase64DataFromFileByIgnoringAllElse(const char* filename, size_t* length) {
   _temp_buildingBase64Str = "";
   withTokens(filename, &ignoreNonBase64AndAppend);
-  byte* data = b64StringToByteStr(_temp_buildingBase64Str.c_str(), length);
+  byte* data = b64StrToByteStr(_temp_buildingBase64Str.c_str(), length);
   _temp_buildingBase64Str = "";
   return data;
 }

@@ -38,7 +38,10 @@ byte* hexStrToByteStr (const char* hexstr, size_t* n);
 //Determines whether c is a valid character in base64
 bool isValidB64Char (char c);
 //Allocates new buffer to hold byte*, puts size in *n
-byte* b64StringToByteStr (const char* b64str, size_t* n);
+byte* b64StrToByteStr (const char* b64str, size_t* n);
+//Converts a base64 character c into the int it represents. Returns -1 on fail.
+// '=' is not a base64 character, it is unrequired padding.
+int b64CharToInt (char c);
 ////////////////////////////////////////////////////////////////////////////////
 
 // Encryption & Decryption /////////////////////////////////////////////////////
