@@ -2,20 +2,22 @@
 #include "parse_options.h"
 
 byte* withInputData (const byte* input, size_t in, const byte* key, size_t kn, bool log, const char* mode, size_t* outn) {
-  printf("Input = 0x");
-  for (size_t i = 0; i < in; i++)
-    printf("%02x", input[i]);
-  printf("\n");
-  printf("Input length = %zu\n", in);
-  
-  printf("Key = 0x");
-  for (size_t i = 0; i < kn; i++)
-    printf("%02x", key[i]);
-  printf("\n");
-  printf("Key length = %zu\n", kn);
-  
-  printf("Logging = %s\n", log?"true":"false");
-  printf("Mode = %s\n", mode);
+  if (log) {
+    printf("Input = 0x");
+    for (size_t i = 0; i < in; i++)
+      printf("%02x", input[i]);
+    printf("\n");
+    printf("Input length = %zu\n", in);
+    
+    printf("Key = 0x");
+    for (size_t i = 0; i < kn; i++)
+      printf("%02x", key[i]);
+    printf("\n");
+    printf("Key length = %zu\n", kn);
+    
+    printf("Logging = %s\n", log?"true":"false");
+    printf("Mode = %s\n", mode);
+  }
   
   byte* output;
   if (strcmp(mode, "encrypt") == 0) {

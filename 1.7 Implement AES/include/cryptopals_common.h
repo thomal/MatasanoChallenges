@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <string>
 #include <unistd.h>
+#include <inttypes.h>
 typedef uint8_t byte; /* unsigned char may be >= 8 bits */
 
 // Defaults ////////////////////////////////////////////////////////////////////
@@ -55,7 +56,7 @@ byte* singleByteXor (const byte* input, byte key, size_t n);
 byte* repeatingKeyXor (const byte* input, size_t n, const byte* key, size_t keyn);
 //Allocates a new buffer to hold byte*, in is length of input in bytes, kn is
 //  length of key in bytes, outn is a place to store the length of the returned
-//  byte*.
+//  byte*. Determines whether the key is 128, 192, or 256 bits from kn.
 byte* aes_ecb_encrypt(const byte* input, size_t in, const byte* key, size_t kn, bool log, size_t* outn);
 byte* aes_ecb_decrypt(const byte* input, size_t in, const byte* key, size_t kn, bool log, size_t* outn);
 ////////////////////////////////////////////////////////////////////////////////
