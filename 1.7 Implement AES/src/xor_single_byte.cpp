@@ -39,17 +39,17 @@ byte* breakSingleByteXor (const byte* ciphertext, size_t len, bool log, const si
   
   //Output to stdout
   if (log) {
-    //PAD printf("Score: %f\n", minScore);
+    PAD printf("Score: %f\n", minScore);
     PAD printf("Key: 0x%02x\n", bestKey);
     PAD printf("Key ASCII: %c\n", bestKey);
-    /*PAD printf("Plaintext: ");
+    PAD printf("Plaintext: ");
     for (size_t i = 0; i < len; i++)
       printf("%x", plaintext[i]);
-    printf("\n");*/
-    /*PAD printf("ASCII: ");
+    printf("\n");
+    PAD printf("ASCII: ");
     for (size_t i = 0; i < len; i++)
       printf("%c", replaceUnprintableWithQuestion(plaintext[i]));
-    printf("\n");*/
+    printf("\n");
   }
   return plaintext;
 }

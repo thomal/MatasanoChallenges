@@ -94,7 +94,7 @@ uint32_t keyScheduleCore(uint32_t n, size_t i) {
   return n;
 }
 
-byte* expandKey (const byte* key, size_t kn) {
+byte* expandKey (const byte* key, size_t kn, bool log) {
   //KeyExpansions - Derive round key
   //Implemented from the following reference: en.wikipedia.org/wiki/Rijndael_key_schedule
   uint32_t* expandedKey;
@@ -185,19 +185,21 @@ byte* expandKey (const byte* key, size_t kn) {
     expandedKeyBytes[(i*4)+3] = (ui32 & 0x000000FF)>>0;
   }
   
-  PAD printf("Expanded Key:\n");
-  for (size_t i = 0; i < curLengthOfExpandedKeyInBytes; i+=16) {
-    showStateWithMoreIndent(expandedKeyBytes+i);
-    if (i != (curLengthOfExpandedKeyInBytes-16))
-      printf("\n");
+  if (log) {
+    PAD printf("Expanded Key:\n");
+    for (size_t i = 0; i < curLengthOfExpandedKeyInBytes; i+=16) {
+      showStateWithMoreIndent(expandedKeyBytes+i);
+      if (i != (curLengthOfExpandedKeyInBytes-16))
+        printf("\n");
+    }
   }
   
   free(expandedKey);
   return expandedKeyBytes;
 }
 
-void addRoundKey(byte* state, const byte* roundKey, size_t kn) {
-  {PAD printf("Round Key:\n");showStateWithMoreIndent(roundKey);}
+void addRoundKey(byte* state, const byte* roundKey, size_t kn, bool log) {
+  if (log) {PAD printf("Round Key:\n");showStateWithMoreIndent(roundKey);}
   for (size_t i = 0; i < kn; i++)
     state[i] ^= roundKey[i];
 }
@@ -238,7 +240,7 @@ void mixColumn (byte* state, short col) {
   //   set prior to shifting.
   // Multiply by 3 -> multiply by 2 and Xor with original value.
   
-  byte h0 = (a0 >> 7)?0xff:0x00, //High bit set for byte in row 0?
+  byte h0 = (a0 >> 7)?0xff:0x00, //0xFF iif bit 7 set for byte in row 0
        h1 = (a1 >> 7)?0xff:0x00, //etc.
        h2 = (a2 >> 7)?0xff:0x00,
        h3 = (a3 >> 7)?0xff:0x00;
@@ -285,8 +287,8 @@ byte* aes_block_encrypt (const byte* block_in, const byte* key, size_t kn, bool 
   if (log) {PAD printf("Added plaintext block:\n");showStateWithMoreIndent(state);}
   
   //Derive round keys and add the first round key in the initial round
-  byte* keySchedule = expandKey(key, kn);
-  addRoundKey(state, keySchedule+0, kn);
+  byte* keySchedule = expandKey(key, kn, log);
+  addRoundKey(state, keySchedule+0, kn, log);
   if (log) {PAD printf("Added round key:\n");showStateWithMoreIndent(state);}
   
   //Perform all rounds, including final round
@@ -302,7 +304,7 @@ byte* aes_block_encrypt (const byte* block_in, const byte* key, size_t kn, bool 
       mixColumns(state);
       if (log) {PAD printf("After mixColumns:\n");showStateWithMoreIndent(state);}
     }
-    addRoundKey(state, keySchedule+((round+1)*kn), kn);
+    addRoundKey(state, keySchedule+((round+1)*kn), kn, log);
     if (log) {PAD printf("Adter addRoundKey:\n");showStateWithMoreIndent(state);}
     indent--;
   }
