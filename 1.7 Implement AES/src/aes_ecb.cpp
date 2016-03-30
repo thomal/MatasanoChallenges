@@ -57,6 +57,24 @@ unsigned char inv_s[256] = {
     0x17, 0x2B, 0x04, 0x7E, 0xBA, 0x77, 0xD6, 0x26, 0xE1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0C, 0x7D
 };
 
+byte inline getByteFromState (const byte* state, size_t row, size_t col) {
+  return state[(col*4)+row];
+}
+
+void inline setByteInState (byte* state, size_t row, size_t col, byte value) {
+  state[(col*4)+row] = value;
+}
+
+void showStateWithMoreIndent (const byte* state) {
+  indent++;
+  for (size_t row = 0; row < 4; row++) {
+    PAD
+    for (size_t col = 0; col < 4; col++)
+      printf("%02x%s", getByteFromState(state, row, col), (col==3)?"\n":" ");
+  }
+  indent--;
+}
+
 uint32_t inline rotate (uint32_t n) {
   return ((n&0b11111111000000000000000000000000)>>24)|(n<<8);
 }
@@ -76,16 +94,18 @@ uint32_t keyScheduleCore(uint32_t n, size_t i) {
   return n;
 }
 
-uint32_t* expandKey (const byte* key, size_t kn) {
+byte* expandKey (const byte* key, size_t kn) {
   //KeyExpansions - Derive round key
   //Implemented from the following reference: en.wikipedia.org/wiki/Rijndael_key_schedule
   uint32_t* expandedKey;
+  byte* expandedKeyBytes;
   size_t curLengthOfExpandedKeyInBytes = 0;
   size_t curLengthOfExpandedKeyIn32Words = 0;
   {
     //128-bit->176, 192-bit->208, 256-bit->240
     size_t b = (kn==16)?176:((kn==24)?208:240);
     expandedKey = (uint32_t*)malloc(sizeof(uint32_t)*(b/4));
+    expandedKeyBytes = (byte*)malloc(sizeof(byte)*b);
     //The first n bytes of the expanded key the encryption key.
     for (size_t bi = 0, eki = 0; bi < kn; bi+=4, eki++) {
       byte b0 = key[bi+0],
@@ -157,49 +177,156 @@ uint32_t* expandKey (const byte* key, size_t kn) {
     }
   }
   
-  /*
-  printf("Expanded key:\n");
   for (size_t i = 0; i < curLengthOfExpandedKeyIn32Words; i++) {
-    uint32_t t = expandedKey[i];
-    byte t0,t1,t2,t3;
-    t0 = (t & 0xFF000000)>>24;
-    t1 = (t & 0x00FF0000)>>16;
-    t2 = (t & 0x0000FF00)>>8;
-    t3 = (t & 0x000000FF)>>0;
-    printf("%02x %02x %02x %02x%s", t0, t1, t2, t3, (((i+1)%4)==0)?"\n":" ");
+    uint32_t ui32 = expandedKey[i];
+    expandedKeyBytes[(i*4)+0] = (ui32 & 0xFF000000)>>24;
+    expandedKeyBytes[(i*4)+1] = (ui32 & 0x00FF0000)>>16;
+    expandedKeyBytes[(i*4)+2] = (ui32 & 0x0000FF00)>>8;
+    expandedKeyBytes[(i*4)+3] = (ui32 & 0x000000FF)>>0;
   }
-  printf("\n");*/
-  return expandedKey;
+  
+  PAD printf("Expanded Key:\n");
+  for (size_t i = 0; i < curLengthOfExpandedKeyInBytes; i+=16) {
+    showStateWithMoreIndent(expandedKeyBytes+i);
+    if (i != (curLengthOfExpandedKeyInBytes-16))
+      printf("\n");
+  }
+  
+  free(expandedKey);
+  return expandedKeyBytes;
 }
 
-void doCycle(byte* state, const byte* key, size_t kn, bool log) {
-  uint32_t* expandedKey = expandKey(key, kn);
+void addRoundKey(byte* state, const byte* roundKey, size_t kn) {
+  {PAD printf("Round Key:\n");showStateWithMoreIndent(roundKey);}
+  for (size_t i = 0; i < kn; i++)
+    state[i] ^= roundKey[i];
+}
+
+void subBytes (byte* state) {
+  for (short i = 0; i < 16; i++)
+    state[i] = s[state[i]];
+}
+
+#define SHIFTED_GET(X) getByteFromState(state, row, ((X)+row)%4)
+void shiftRows (byte* state) {
+  for (short row = 1; row < 4; row++) {
+    byte t0 = SHIFTED_GET(0),
+         t1 = SHIFTED_GET(1),
+         t2 = SHIFTED_GET(2),
+         t3 = SHIFTED_GET(3);
+    setByteInState(state, row, 0, t0);
+    setByteInState(state, row, 1, t1);
+    setByteInState(state, row, 2, t2);
+    setByteInState(state, row, 3, t3);
+  }
+}
+
+void mixColumn (byte* state, short col) {
+  //Implemented from the following reference: https://en.wikipedia.org/wiki/Rijndael_mix_columns
+  /*
+    b_0 = 2a_0 + 3a_1 + 1a_2 + 1a_3
+    b_1 = 1a_0 + 2a_1 + 3a_2 + 1a_3
+    b_2 = 1a_0 + 1a_1 + 2a_2 + 3a_3
+    b_3 = 3a_0 + 1a_1 + 1a_2 + 2a_3
+  */
+  byte a0 = state[(col*4)+0],
+       a1 = state[(col*4)+1],
+       a2 = state[(col*4)+2],
+       a3 = state[(col*4)+3];
   
-  //InitialRound - AddRoundKey
-  //TODO
+  // Multiply by 2 -> single shift left and Xor with 0xff iif the high bit is
+  //   set prior to shifting.
+  // Multiply by 3 -> multiply by 2 and Xor with original value.
   
-  //Rounds - SubBytes (lookup), ShiftRows(transpost), MixColumns(mix), AddRoundKey
-  //TODO
+  byte h0 = (a0 >> 7)?0xff:0x00, //High bit set for byte in row 0?
+       h1 = (a1 >> 7)?0xff:0x00, //etc.
+       h2 = (a2 >> 7)?0xff:0x00,
+       h3 = (a3 >> 7)?0xff:0x00;
   
-  //FinalRound - Same as normal Round except without MixColumns
-  //TODO
+  byte _1a_0 = a0,
+       _2a_0 = (a0 << 1) ^ (0x1b & h0),
+       _3a_0 = _1a_0 ^ _2a_0,
+       _1a_1 = a1,
+       _2a_1 = (a1 << 1) ^ (0x1b & h1),
+       _3a_1 = _1a_1 ^ _2a_1,
+       _1a_2 = a2,
+       _2a_2 = (a2 << 1) ^ (0x1b & h2),
+       _3a_2 = _1a_2 ^ _2a_2,
+       _1a_3 = a3,
+       _2a_3 = (a3 << 1) ^ (0x1b & h3),
+       _3a_3 = _1a_3 ^ _2a_3;
   
-  //TODO free expanded key
+  //Addition is Xor in Rijndael's Galois field.
+  byte b0 = _2a_0 ^ _3a_1 ^ _1a_2 ^ _1a_3,
+       b1 = _1a_0 ^ _2a_1 ^ _3a_2 ^ _1a_3,
+       b2 = _1a_0 ^ _1a_1 ^ _2a_2 ^ _3a_3,
+       b3 = _3a_0 ^ _1a_1 ^ _1a_2 ^ _2a_3;
+  
+  //Mutate state
+  setByteInState(state, 0, col, b0);
+  setByteInState(state, 1, col, b1);
+  setByteInState(state, 2, col, b2);
+  setByteInState(state, 3, col, b3);
+}
+
+void mixColumns (byte* state) {
+  for (short i = 0; i < 4; i++)
+    mixColumn(state, i);
+}
+
+byte* aes_block_encrypt (const byte* block_in, const byte* key, size_t kn, bool log) {
+  //Implemented from the following reference: http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf
+  assert(kn*8 == 128 || kn*8 == 192 || kn*8 == 256);
+  int rounds = ((kn*8)==128)?10:(((kn*8)==192)?12:14);
+  
+  //Malloc the state, and initalize it with the plaintext block
+  byte* state = (byte*)malloc(sizeof(byte)*16);
+  memcpy(state, block_in, sizeof(byte)*16);
+  if (log) {PAD printf("Added plaintext block:\n");showStateWithMoreIndent(state);}
+  
+  //Derive round keys and add the first round key in the initial round
+  byte* keySchedule = expandKey(key, kn);
+  addRoundKey(state, keySchedule+0, kn);
+  if (log) {PAD printf("Added round key:\n");showStateWithMoreIndent(state);}
+  
+  //Perform all rounds, including final round
+  for (unsigned short round = 0; round < rounds; round++) {
+    if (log) {PAD printf("Round %d/%d\n", round+1, rounds);}
+    indent++;
+    if (log) {PAD printf("Initial state:\n");showStateWithMoreIndent(state);}
+    subBytes(state);
+    if (log) {PAD printf("After SubBytes:\n");showStateWithMoreIndent(state);}
+    shiftRows(state);
+    if (log) {PAD printf("After ShiftRows:\n");showStateWithMoreIndent(state);}
+    if (round!=(rounds-1)) {
+      mixColumns(state);
+      if (log) {PAD printf("After mixColumns:\n");showStateWithMoreIndent(state);}
+    }
+    addRoundKey(state, keySchedule+((round+1)*kn), kn);
+    if (log) {PAD printf("Adter addRoundKey:\n");showStateWithMoreIndent(state);}
+    indent--;
+  }
+  
+  free(keySchedule);
+  return state;
 }
 
 byte* aes_ecb_encrypt(const byte* input, size_t in, const byte* key, size_t kn, bool log, size_t* outn) {
-  //TODO abstract away encrypting one block and then implement ECB mode
-  assert(kn*8 == 128 || kn*8 == 192 || kn*8 == 256);
-  size_t cycles = ((kn*8)==128)?10:(((kn*8)==192)?12:14);
-  
-  byte* state = (byte*)malloc(sizeof(byte)*16);
-  memcpy(state, input, sizeof(byte)*16);
-  
-  for (size_t cycle = 0; cycle < cycles; cycle++)
-    doCycle(state, key, kn, log);
-  *outn = 16;//TODO change once we implement ECB
-  
-  return state;
+  assert((in%16) == 0); //TODO implement padding
+  *outn = in; //Since we don't pad the size is the same
+  size_t blocks = in/16;
+  byte* ciphertext = (byte*)malloc(sizeof(byte)*16*blocks);
+  indent++;
+  for (size_t block = 0; block < blocks; block++) {
+    if (log) {PAD printf("Block %zu/%zu\n", block+1, blocks);}
+    indent++;
+    byte* encipheredBlock = aes_block_encrypt(input+(block*16), key, kn, log);
+    memcpy(ciphertext+(block*16), encipheredBlock, 16);
+    free(encipheredBlock);
+    indent--;
+  }
+  indent--;
+  return ciphertext;
 }
 
 byte* aes_ecb_decrypt(const byte* input, size_t in, const byte* key, size_t kn, bool log, size_t* outn) {

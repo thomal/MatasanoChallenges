@@ -19,7 +19,7 @@ typedef uint8_t byte; /* unsigned char may be >= 8 bits */
 ////////////////////////////////////////////////////////////////////////////////
 
 // MACROS //////////////////////////////////////////////////////////////////////
-#define PAD printSpaces(indentLevel*4);
+#define PAD printSpaces(indent*4);
 ////////////////////////////////////////////////////////////////////////////////
 
 // Globals /////////////////////////////////////////////////////////////////////
@@ -68,7 +68,7 @@ byte* aes_ecb_decrypt(const byte* input, size_t in, const byte* key, size_t kn, 
 //   correct. If the lowest scoring key (best) is above the threshold then the
 //   attempt is consiered to have failed and the function returns nullptr.
 //   Set byteFreqs to nullptr to use the default.
-byte* breakSingleByteXor (const byte* ciphertext, size_t len, bool log = false, size_t indentLevel = 1, const size_t* byteFreqs = nullptr, double threshold = DEFAULT_FREQUENCY_SIMILARITY_THRESHOLD);
+byte* breakSingleByteXor (const byte* ciphertext, size_t len, bool log = false, const size_t* byteFreqs = nullptr, double threshold = DEFAULT_FREQUENCY_SIMILARITY_THRESHOLD);
 // Takes a ciphertext from repeatingKeyXor() and breaks it if there is a known
 //   frequency distribution for bytes in the plaintext. The threshold value
 //   determines the maximum score at which a key will still be considered
@@ -77,7 +77,7 @@ byte* breakSingleByteXor (const byte* ciphertext, size_t len, bool log = false, 
 // Set byteFreqs to nullptr to use the default.
 // Set minKeysize or maxKeysize to 0 to use the respective default which is set
 //   in the function itself.
-byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log = false, size_t indentLevel = 1, const size_t* byteFreqs = nullptr, size_t minKeysize = 0, size_t maxKeysize = 0, double threshold = DEFAULT_FREQUENCY_SIMILARITY_THRESHOLD);
+byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log = false, const size_t* byteFreqs = nullptr, size_t minKeysize = 0, size_t maxKeysize = 0, double threshold = DEFAULT_FREQUENCY_SIMILARITY_THRESHOLD);
 ////////////////////////////////////////////////////////////////////////////////
 
 // Heuristics //////////////////////////////////////////////////////////////////

@@ -18,7 +18,7 @@ double singleByteXorScore (const byte* ciphertext, byte key, size_t len, const s
   return score;
 }
 
-byte* breakSingleByteXor (const byte* ciphertext, size_t len, bool log, size_t indentLevel, const size_t* byteFreqs, double threshold) {
+byte* breakSingleByteXor (const byte* ciphertext, size_t len, bool log, const size_t* byteFreqs, double threshold) {
   if (byteFreqs == nullptr)
     byteFreqs = DEFAULT_BYTE_FREQUENCIES;
   double minScore = singleByteXorScore(ciphertext, 0, len, byteFreqs);
@@ -40,7 +40,7 @@ byte* breakSingleByteXor (const byte* ciphertext, size_t len, bool log, size_t i
   //Output to stdout
   if (log) {
     //PAD printf("Score: %f\n", minScore);
-    //PAD printf("Key: 0x%02x\n", bestKey);
+    PAD printf("Key: 0x%02x\n", bestKey);
     PAD printf("Key ASCII: %c\n", bestKey);
     /*PAD printf("Plaintext: ");
     for (size_t i = 0; i < len; i++)

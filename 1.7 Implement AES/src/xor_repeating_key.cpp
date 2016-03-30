@@ -18,7 +18,7 @@ byte* repeatingKeyXor (const byte* input, size_t n, const byte* key, size_t keyn
 //  was encrypted with the same byte of the key. Call these blocks.
 //break each message with breakSingleByteXor
 //interleave messages to reconstruct plaintext
-byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log, size_t indentLevel, const size_t* byteFreqs, size_t minKeysize, size_t maxKeysize, double threshold) {
+byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log, const size_t* byteFreqs, size_t minKeysize, size_t maxKeysize, double threshold) {
   byte* plaintext = nullptr;
 
   if (byteFreqs == nullptr)
@@ -34,7 +34,7 @@ byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log, size_t
   
   //Find keysize
   if (log) {PAD printf("Determining keysize:\n");}
-  indentLevel++;
+  indent++;
   double minAvgNormDist = 0;
   size_t bestKeysize = 0;
   
@@ -76,12 +76,12 @@ byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log, size_t
     return nullptr;
   }
   if (log) {PAD printf("Found keysize, keysize = %zu\n", bestKeysize);}
-  indentLevel--;
+  indent--;
   
   //Deinterlace (let di be short for deinterlace, let a message formed by the
   //  process of deinterlacing be known as a deinterlaced block, or diBlock)
   if (log) {PAD printf("Deinterlacing\n");}
-  indentLevel++;
+  indent++;
   double blockCount = ceil((double)len/bestKeysize);
   double maxDiMsgSize = 1*blockCount; //1 byte per block
   byte** diBlocks = (byte**) malloc(sizeof(byte*)*bestKeysize);
@@ -97,13 +97,13 @@ byte* breakRepeatingKeyXor (const byte* ciphertext, size_t len, bool log, size_t
     }
   }
   
-  indentLevel--;
+  indent--;
   
   //Break deinterlaced blocks
   byte** diPlainBlocks = (byte**) malloc(sizeof(byte*)*bestKeysize);
   for (size_t diBlock = 0; diBlock < bestKeysize; diBlock++) {
     if (log) {PAD printf("Breaking deinterlaced block %zu of %zu\n", diBlock+1, bestKeysize);}
-    diPlainBlocks[diBlock] = breakSingleByteXor(diBlocks[diBlock], diBlockSizes[diBlock], log, indentLevel+1, nullptr, threshold);
+    diPlainBlocks[diBlock] = breakSingleByteXor(diBlocks[diBlock], diBlockSizes[diBlock], log, nullptr, threshold);
     if (!diPlainBlocks[diBlock]) {
       if(log){
         printf("WARNING - Failed to break deinterlaced block %zu, hex block follows:", diBlock+1);
