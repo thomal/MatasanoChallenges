@@ -20,13 +20,14 @@ byte* withInputData (const byte* input, size_t in, const byte* key, size_t kn, b
   }
   
   byte* output;
+  *outn = in; //No padding, in must be a multiple of 16.
   if (strcmp(mode, "encrypt") == 0) {
-    output = aes_ecb_encrypt(input, in, key, kn, log, outn);
-  } else if (strcmp(mode, "encrypt") == 0) {
-    output = aes_ecb_decrypt(input, in, key, kn, log, outn);
+    output = aes_ecb_encrypt(input, in, key, kn, log);
+  } else if (strcmp(mode, "decrypt") == 0) {
+    output = aes_ecb_decrypt(input, in, key, kn, log);
   } else {
     printf("Invalid mode %s.\n", mode);
-    assert(0);
+    exit(0);
   }
   
   return output;

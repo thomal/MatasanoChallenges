@@ -55,10 +55,14 @@ byte* singleByteXor (const byte* input, byte key, size_t n);
 // function is used for encryption and decryption.
 byte* repeatingKeyXor (const byte* input, size_t n, const byte* key, size_t keyn);
 //Allocates a new buffer to hold byte*, in is length of input in bytes, kn is
-//  length of key in bytes, outn is a place to store the length of the returned
-//  byte*. Determines whether the key is 128, 192, or 256 bits from kn.
-byte* aes_ecb_encrypt(const byte* input, size_t in, const byte* key, size_t kn, bool log, size_t* outn);
-byte* aes_ecb_decrypt(const byte* input, size_t in, const byte* key, size_t kn, bool log, size_t* outn);
+//  length of key in bytes. kn is the size of the key in bytes. Keysize must be
+//  128, 192, or 256 bits. in must be a multiple of 16, and padding must be
+//  taken care of by the user.
+byte* aes_ecb_encrypt(const byte* input, size_t in, const byte* key, size_t kn, bool log);
+byte* aes_ecb_decrypt(const byte* input, size_t in, const byte* key, size_t kn, bool log);
+//See the documentation for aes_ecb_encrypt/decrypt for an explanation of args.
+byte* aes_encrypt_block (const byte* block_in, const byte* key, size_t kn, bool log);
+byte* aes_decrypt_block (const byte* block_in, const byte* key, size_t kn, bool log);
 ////////////////////////////////////////////////////////////////////////////////
 
 // Breaks //////////////////////////////////////////////////////////////////////
