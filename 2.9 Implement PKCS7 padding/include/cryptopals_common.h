@@ -45,7 +45,8 @@ byte* b64StrToByteStr (const char* b64str, size_t* n);
 int b64CharToInt (char c);
 //PKCS7 Padding
 //Return value must be free()'d.
-byte* PKCS7(const byte* input, size_t in, uint8_t blocksize, size_t* outn);
+byte* PKCS7_add(const byte* input, size_t in, uint8_t blocksize, size_t* outn);
+byte* PKCS7_remove(const byte* input, size_t in, uint8_t blocksize, size_t* outn);
 ////////////////////////////////////////////////////////////////////////////////
 
 // Encryption & Decryption /////////////////////////////////////////////////////

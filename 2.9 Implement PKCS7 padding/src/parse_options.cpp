@@ -33,11 +33,12 @@ void convertOutputFree (byte* data, size_t n, IOFormat format);
 byte *_input  = nullptr,
      *_input2 = nullptr;
 size_t input2n;
+char* mode = nullptr;
 bool f_log = false;
 IOFormat outputF = UNDEFINED;
-byte* (*withInputData) (const byte* input, size_t in, const byte* input2, size_t i2n, bool log, size_t* outn) = nullptr;
+byte* (*withInputData) (const byte* input, size_t in, const byte* input2, size_t i2n, const char* mode, bool log, size_t* outn) = nullptr;
 
-void optionParsing(int argc, char** argv, byte* (*f) (const byte* input, size_t in, const byte* input2, size_t i2n, bool log, size_t* outn)) {
+void optionParsing(int argc, char** argv, byte* (*f) (const byte* input, size_t in, const byte* input2, size_t i2n, const char* mode, bool log, size_t* outn)) {
   int oc; //Option character
   withInputData = f;
   
@@ -54,13 +55,14 @@ void optionParsing(int argc, char** argv, byte* (*f) (const byte* input, size_t 
   size_t inputn;
   
   //Parse args
-  while ((oc = getopt(argc, argv, "i:I:o:y:x:l")) != -1) {
+  while ((oc = getopt(argc, argv, "i:I:o:y:x:m:l")) != -1) {
     switch (oc) {
     FORMAT_ARGUMENT('i', inputF)
     FORMAT_ARGUMENT('I', input2F)
     FORMAT_ARGUMENT('o', outputF)
     CASE_X_SET_Y_TO_OPTARG('y', input)
     CASE_X_SET_Y_TO_OPTARG('x', input2)
+    CASE_X_SET_Y_TO_OPTARG('m', mode)
     FLAG('l', f_log)
     default:
       printf("Unknown argument: %c\n", oc);
@@ -91,8 +93,14 @@ void optionParsing(int argc, char** argv, byte* (*f) (const byte* input, size_t 
     printf("ERROR - must specify input data with -x [<hex string>|<raw bytes>]\n");
     exit(0);
   }
+  if (mode == nullptr || (strcmp(mode, "add") && strcmp(mode, "remove"))) {
+    printf("ERROR - must specify mode with -m [add|remove]\n");
+    exit(0);
+  }
   
   //Duplicate arguments on the heap
+  //Duplicate mode
+  mode = strdup(mode);
   //Duplicate input2
   if (input2F == RAW) {
     _input2 = (byte*)strdup(input2);
@@ -115,7 +123,7 @@ void optionParsing(int argc, char** argv, byte* (*f) (const byte* input, size_t 
   
   if (inputF != HEXFILE_TOKENS) {
     size_t len;
-    byte* output = (*withInputData)(_input, inputn, _input2, input2n, f_log, &len);
+    byte* output = (*withInputData)(_input, inputn, _input2, input2n, mode, f_log, &len);
     convertOutputFree(output, len, outputF);
   }
 }
@@ -130,7 +138,7 @@ void tokensFromHexFile (const char* hexData) {
   size_t inputn;
   byte* input = hexStrToByteStr(hexData, &inputn);
   size_t len;
-  byte* output = (*withInputData)(input, inputn, _input2, input2n, f_log, &len);
+  byte* output = (*withInputData)(input, inputn, _input2, input2n, mode, f_log, &len);
   convertOutputFree(output, len, outputF);
   free(input);
 }
@@ -161,4 +169,6 @@ void cleanupArgs() {
     free(_input);
   if (_input2 != nullptr)
     free(_input2);
+  if (mode != nullptr)
+    free(mode);
 }
